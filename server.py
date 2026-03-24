@@ -43,6 +43,7 @@ from mcp.server.fastmcp import FastMCP, Context
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+from starlette.routing import Route
 
 # D402 payment protocol - using Starlette middleware
 from traia_iatp.d402.starlette_middleware import D402PaymentMiddleware
@@ -437,8 +438,10 @@ def create_app_with_middleware():
     logger.info("   - Auth extraction: Enabled")
     logger.info("   - Dual mode: API key OR payment")
     
-    # Add health check endpoint (bypasses middleware)
-    @app.route("/health", methods=["GET"])
+    # Add health check endpoint (bypasses middleware).
+    # Note: app.route() decorator was removed in Starlette >= 0.21.
+    # We define the function first and register it via Route + router.routes,
+    # which works across all Starlette versions including 0.45+.
     async def health_check(request: Request) -> JSONResponse:
         """Health check endpoint for container orchestration."""
         return JSONResponse(
@@ -448,6 +451,7 @@ def create_app_with_middleware():
                 "timestamp": datetime.now().isoformat()
             }
         )
+    app.router.routes.append(Route("/health", health_check, methods=["GET"]))
     logger.info("✅ Added /health endpoint")
     
     return app
